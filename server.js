@@ -1,22 +1,192 @@
-const express = require('express')
+const {MongoClient, ServerApiVersion, ObjectId} = require('mongodb');
+require('dotenv').config();
+const port = process.env.PORT;
+const uri = process.env.MONGO_URI;
+
+const { exposantSchema, visiteurSchema } = require('./schema_requete');
+
+const express = require('express');
 const app = express();
 
-app.get("/", (req, res) => {
-    res.json({ msg: "hello from server" });
+
+/* ----------------------------------------------- Gestion du serveur ----------------------------------------------- */
+
+const client = new MongoClient(uri, {
+    serverApi: {
+        version: ServerApiVersion.v1,
+        strict: true,
+        deprecationErrors: true,
+    }
 });
 
-app.listen(5002, () => {
-    console.log("server running on port 5002");
+async function run() {
+    try {
+        // Connect the client to the server	(optional starting in v4.7)
+        await client.connect();
+        // Send a ping to confirm a successful connection
+        await client.db("admin").command({ping: 1});
+        console.log("Vous êtes bien connecté à MongoDB!");
+
+        // Start the Express server after the MongoDB connection
+        const server = app.listen(port, () => {
+            console.log(`Le serveur fonctionne sur le port: ${port}`);
+        });
+
+        // Shutdown function
+        const shutdown = () => {
+            console.log('Fermeture de la session MongoDB...');
+            client.close().then(() => {
+                console.log('MongoDB: connection fermé.');
+                console.log('Arrêt en cours...');
+                server.close(() => {
+                    console.log('Serveur: Eteint.');
+                    process.exit(0);
+                });
+            }).catch((err) => {
+                console.error('Erreur durant la fermeture du serveur:', err);
+                process.exit(1);
+            });
+        };
+
+        // Process events
+        process.on('SIGINT', shutdown);
+        process.on('SIGTERM', shutdown);
+    } catch (error) {
+        console.error("Erreur lors de la connection à MongoDB:", error);
+        process.exit(1); // Exit the process if MongoDB connection fails
+    }
+}
+
+run().catch(console.dir);
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+
+app.use(express.json({ type: 'application/json' }));
+
+app.get("/api/exposant", async (req, res, next) => {
+    try {
+        // Effectuez une requête à la base de données pour récupérer les exposants
+        const exposants = await client.db("VisIT").collection("exposant").find().toArray();
+
+        // Renvoyer les exposants en tant que réponse
+        res.json(exposants);
+    } catch (error) {
+        next(error);
+    }
 });
 
-app.get("/api", (req, res) => {
-    res.json({"users": ["user1", "user2"]});
+app.get("/api/visiteur", async (req, res, next) => {
+    try {
+        // Effectuez une requête à la base de données pour récupérer les visiteurs
+        const visiteurs = await client.db("VisIT").collection("visiteur").find().toArray();
+
+        // Renvoyer les visiteurs en tant que réponse
+        res.json(visiteurs);
+    } catch (error) {
+        next(error);
+    }
 });
 
-app.get("/organisateur", (req, res) => {
-    res.json({"Acces Orga": "orga1"});
+app.post("/api/exposant/add", async (req, res, next) => {
+    try {
+        const data = req.body;
+
+        // Valider les données avec Joi
+        const { error, value } = exposantSchema.validate(data);
+
+        // Si les données ne sont pas valides, renvoyer une erreur
+        if (error) {
+            res.status(400).send(error.details[0].message);
+            return;
+        } else {
+            // Si les données sont valides, procéder à l'insertion
+            delete value._id;
+
+            const result = await client.db("VisIT").collection("exposant").insertOne(value);
+            res.status(200).send("Données pour exposant enregistrées avec succès");
+        }
+    } catch (error) {
+        next(error);
+    }
 });
 
-app.get("/visiteur", (req, res) => {
-    res.json({"Acces visiteur": "visiteur1"});
+app.post("/api/visiteur/add", async (req, res, next) => {
+    try {
+        const data = req.body;
+
+        // Valider les données avec Joi
+        const { error, value } = visiteurSchema.validate(data);
+
+        // Si les données ne sont pas valides, renvoyer une erreur
+        if (error) {
+            res.status(400).send(error.details[0].message);
+            return;
+        } else {
+            // Si les données sont valides, procéder à l'insertion
+            delete value._id;
+
+            const result = await client.db("VisIT").collection("visiteur").insertOne(value);
+            res.status(200).send("Données pour visiteur enregistrées avec succès");
+        }
+    } catch (error) {
+        next(error);
+    }
+});
+
+app.put('/api/visiteur/update/:id', async (req, res, next) => {
+    const documentId = req.params.id;
+    const updatedData = req.body;
+
+    try {
+        // Validation des données
+        const { error, value } = visiteurSchema.validate(updatedData);
+
+        // Si les données ne sont pas valides, renvoyer une erreur
+        if (error) {
+            res.status(400).send(error.details[0].message);
+        } else {
+            // Si les données sont valides, procéder à la mise à jour
+
+            const result = await client.db("VisIT").collection('visiteur').updateOne({_id: new ObjectId(documentId)}, {$set: value});
+
+            // Vérifie si la mise à jour a été effectuée avec succès
+            if (result.modifiedCount === 1) {
+                res.status(200).json({message: 'Document mis à jour avec succès'});
+            } else {
+                res.status(404).json({message: 'Document non trouvé'});
+            }
+        }
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Affiche quand il y a une nouvelle connexion
+app.use((req, res, next) => {
+    res.setHeader('Connection', 'close'); // Ajoute un en-tête pour indiquer au navigateur de fermer la connexion
+    console.log('Nouvelle connexion :', req.method, req.originalUrl);
+    next();
+});
+
+// Evite le crash du serveur si une erreur survient
+app.use((err, req, res, next) => {
+    if (err && err.error && err.error.isJoi) {
+        res.status(400).json({
+            type: err.type,
+            message: err.error.toString(),
+        });
+    } else {
+        res.status(500).json({message: 'Une erreur est survenue sur le serveur.'});
+    }
+});
+
+/* ---------------------------------------------- Gestion des erreurs ----------------------------------------------- */
+process.on('unhandledRejection', (reason, p) => {
+    console.error('Unhandled Rejection at:', p, 'reason:', reason);
+    shutdown();
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception thrown:', err);
+    shutdown();
 });
