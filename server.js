@@ -3,6 +3,8 @@ require("dotenv").config();
 const port = process.env.PORT;
 const uri = process.env.MONGO_URI;
 
+const cors = require('cors');
+
 const {exposantSchema, visiteurSchema} = require("./schema_requete");
 
 const express = require("express");
@@ -18,6 +20,8 @@ const client = new MongoClient(uri, {
         deprecationErrors: true,
     }
 });
+
+app.use(cors());
 
 // Procédure du lancement et de l'arret du serveur
 async function run() {
@@ -114,7 +118,7 @@ app.post("/api/exposant/add", async (req, res, next) => {
             delete value._id;
 
             const result = await client.db("VisIT").collection("exposant").insertOne(value);
-            res.status(200).send("Données pour exposant enregistrées avec succès");
+            res.status(200).json({ message: "Données pour exposant enregistrées avec succès" });
         }
     } catch (error) {
         next(error);
@@ -139,7 +143,7 @@ app.post("/api/visiteur/add", async (req, res, next) => {
             }
 
             const result = await client.db("VisIT").collection("visiteur").insertOne(value);
-            res.status(200).send("Données pour visiteur enregistrées avec succès");
+            res.status(200).json({ message: "Données pour visiteur enregistrées avec succès" });
         }
     } catch (error) {
         next(error);
@@ -155,7 +159,7 @@ app.post("/api/stand/add", async (req, res, next) => {
         }
 
         const result = await client.db("VisIT").collection("stand").insertOne(data);
-        res.status(200).send("Données du stand enregistrées avec succès");
+        res.status(200).json({ message: "Données pour stand enregistrées avec succès" });
     } catch (error) {
         next(error);
     }
