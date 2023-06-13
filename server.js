@@ -111,7 +111,7 @@ app.post("/api/exposant/add", async (req, res, next) => {
 
         // Si les données ne sont pas valides, renvoyer une erreur
         if (error) {
-            res.status(400).send(error.details[0].message);
+            res.status(400).json({ message: error.details[0].message });
             return;
         } else {
             // Si les données sont valides, procéder à l'insertion
@@ -134,7 +134,7 @@ app.post("/api/visiteur/add", async (req, res, next) => {
 
         // Si les données ne sont pas valides, renvoyer une erreur
         if (error) {
-            res.status(400).send(error.details[0].message);
+            res.status(400).json({ message: error.details[0].message });
             return;
         } else {
             // Si les données sont valides, procéder à l'insertion
