@@ -19,20 +19,19 @@ const client = new MongoClient(uri, {
     }
 });
 
+// Procédure du lancement et de l'arret du serveur
 async function run() {
     try {
-        // Connect the client to the server	(optional starting in v4.7)
         await client.connect();
-        // Send a ping to confirm a successful connection
         await client.db("admin").command({ping: 1});
         console.log("Vous êtes bien connecté à MongoDB!");
 
-        // Start the Express server after the MongoDB connection
+       // Démarrage du serveur Express après MongoDB
         const server = app.listen(port, () => {
             console.log(`Le serveur fonctionne sur le port: ${port}`);
         });
 
-        // Shutdown function
+        // Fonction d'arret
         const shutdown = () => {
             console.log("Fermeture de la session MongoDB...");
             client.close().then(() => {
@@ -48,18 +47,18 @@ async function run() {
             });
         };
 
-        // Process events
+        // Gestion des évènements (ex: "CTRL+C")
         process.on("SIGINT", shutdown);
         process.on("SIGTERM", shutdown);
     } catch (error) {
         console.error("Erreur lors de la connection à MongoDB:", error);
-        process.exit(1); // Exit the process if MongoDB connection fails
+        process.exit(1);
     }
 }
 
 run().catch(console.dir);
 
-/*--------------------------------------------------------------------------------------------------------------------*/
+/* ----------------------------------------------- Gestion des routes ----------------------------------------------- */
 
 app.use(express.json({type: "application/json"}));
 
@@ -89,10 +88,10 @@ app.get("/api/visiteur", async (req, res, next) => {
 
 app.get("/api/stand", async (req, res, next) => {
     try {
-        // Effectuez une requête à la base de données pour récupérer les exposants
+        // Effectuez une requête à la base de données pour récupérer les stands
         const stands = await client.db("VisIT").collection("stand").find().toArray();
 
-        // Renvoyer les exposants en tant que réponse
+        // Renvoyer les stands en tant que réponse
         res.json(stands);
     } catch (error) {
         next(error);
@@ -151,8 +150,6 @@ app.post("/api/stand/add", async (req, res, next) => {
     try {
         const data = req.body;
 
-        // Procéder à l'insertion
-        // Vérifier que le champ _id n'est pas présent
         if (data._id) {
             delete data._id;
         }
@@ -196,7 +193,7 @@ app.delete("/api/visiteur/delete/:id", async (req, res, next) => {
     const documentId = req.params.id;
 
     try {
-        // Suppression du document dans la collection
+        // Suppression du document
         const result = await client.db("VisIT").collection("visiteur").deleteOne({_id: new ObjectId(documentId)});
 
         // Vérifie si la suppression a été effectuée avec succès
