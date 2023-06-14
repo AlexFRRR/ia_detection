@@ -5,7 +5,6 @@ const uri = process.env.MONGO_URI;
 
 const cors = require('cors');
 
-const {exposantSchema, visiteurSchema} = require("./schema_requete");
 const { exposantSchema, visiteurSchema } = require("./schema_requete");
 
 const express = require("express");
