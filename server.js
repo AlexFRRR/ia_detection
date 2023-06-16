@@ -3,7 +3,7 @@ require("dotenv").config();
 const port = process.env.PORT;
 const uri = process.env.MONGO_URI;
 
-const cors = require('cors');
+const cors = require("cors");
 
 const { exposantSchema, visiteurSchema } = require("./schema_requete");
 
@@ -35,42 +35,47 @@ app.use(cors());
 
 // Procédure du lancement et de l'arret du serveur
 async function run() {
-    try {
-        await client.connect();
-        await client.db("admin").command({ping: 1});
-        console.log("Vous êtes bien connecté à MongoDB!");
+  try {
+    await client.connect();
+    await client.db("admin").command({ ping: 1 });
+    console.log("Vous êtes bien connecté à MongoDB!");
 
-       // Démarrage du serveur Express après MongoDB
-        const server = app.listen(port, () => {
-            console.log(`Le serveur fonctionne sur le port: ${port}`);
+    // Démarrage du serveur Express après MongoDB
+    const server = app.listen(port, () => {
+      console.log(`Le serveur fonctionne sur le port: ${port}`);
+    });
+
+    // Fonction d'arret
+    const shutdown = () => {
+      console.log("Fermeture de la session MongoDB...");
+      client
+        .close()
+        .then(() => {
+          console.log("MongoDB: connection fermé.");
+          console.log("Arrêt en cours...");
+          server.close(() => {
+            console.log("Serveur: Eteint.");
+            process.exit(0);
+          });
+        })
+        .catch((err) => {
+          console.error("Erreur durant la fermeture du serveur:", err);
+          process.exit(1);
         });
-        
-        // Fonction d'arret
-        const shutdown = () => {
-            console.log("Fermeture de la session MongoDB...");
-            client.close().then(() => {
-                console.log("MongoDB: connection fermé.");
-                console.log("Arrêt en cours...");
-                server.close(() => {
-                    console.log("Serveur: Eteint.");
-                    process.exit(0);
-                });
-            }).catch((err) => {
-                console.error("Erreur durant la fermeture du serveur:", err);
-                process.exit(1);
-            });
-        };
+    };
 
-        // Gestion des évènements (ex: "CTRL+C")
-        process.on("SIGINT", shutdown);
-        process.on("SIGTERM", shutdown);
-    } catch (error) {
-        console.error("Erreur lors de la connection à MongoDB:", error);
-        process.exit(1);
-    }
+    // Gestion des évènements (ex: "CTRL+C")
+    process.on("SIGINT", shutdown);
+    process.on("SIGTERM", shutdown);
+  } catch (error) {
+    console.error("Erreur lors de la connection à MongoDB:", error);
+    process.exit(1);
+  }
 }
 
-run().catch(console.dir);
+run().catch((error) => {
+  console.log("error", error);
+});
 
 /* ----------------------------------------------- Gestion des routes ----------------------------------------------- */
 
@@ -107,15 +112,19 @@ app.get("/api/visiteur", async (req, res, next) => {
 });
 
 app.get("/api/stand", async (req, res, next) => {
-    try {
-        // Effectuez une requête à la base de données pour récupérer les stands
-        const stands = await client.db("VisIT").collection("stand").find().toArray();
+  try {
+    // Effectuez une requête à la base de données pour récupérer les stands
+    const stands = await client
+      .db("VisIT")
+      .collection("stand")
+      .find()
+      .toArray();
 
-        // Renvoyer les stands en tant que réponse
-        res.json(stands);
-    } catch (error) {
-        next(error);
-    }
+    // Renvoyer les stands en tant que réponse
+    res.json(stands);
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.post("/api/exposant/add", async (req, res, next) => {
@@ -125,21 +134,25 @@ app.post("/api/exposant/add", async (req, res, next) => {
     // Valider les données avec Joi
     const { error, value } = exposantSchema.validate(data);
 
-        // Si les données ne sont pas valides, renvoyer une erreur
-        if (error) {
-            res.status(400).json({ message: error.details[0].message });
-            return;
-        } else {
-            // Si les données sont valides, procéder à l'insertion
-            delete value._id;
+    // Si les données ne sont pas valides, renvoyer une erreur
+    if (error) {
+      res.status(400).json({ message: error.details[0].message });
+      return;
+    } else {
+      // Si les données sont valides, procéder à l'insertion
+      delete value._id;
 
-            const result = await client.db("VisIT").collection("exposant").insertOne(value);
-            res.status(200).json({ message: "Données pour exposant enregistrées avec succès" });
-        }
-    } catch (error) {
-        next(error);
+      const result = await client
+        .db("VisIT")
+        .collection("exposant")
+        .insertOne(value);
+      res
+        .status(200)
+        .json({ message: "Données pour exposant enregistrées avec succès" });
     }
-
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.post("/api/visiteur/add", async (req, res, next) => {
@@ -149,37 +162,44 @@ app.post("/api/visiteur/add", async (req, res, next) => {
     // Valider les données avec Joi
     const { error, value } = visiteurSchema.validate(data);
 
-        // Si les données ne sont pas valides, renvoyer une erreur
-        if (error) {
-            res.status(400).json({ message: error.details[0].message });
-            return;
-        } else {
-            // Si les données sont valides, procéder à l'insertion
-            if (data._id) {
-                delete data._id;
-            }
+    // Si les données ne sont pas valides, renvoyer une erreur
+    if (error) {
+      res.status(400).json({ message: error.details[0].message });
+      return;
+    } else {
+      // Si les données sont valides, procéder à l'insertion
+      if (data._id) {
+        delete data._id;
+      }
 
-            const result = await client.db("VisIT").collection("visiteur").insertOne(value);
-            res.status(200).json({ message: "Données pour visiteur enregistrées avec succès" });
-        }
-    } catch (error) {
-        next(error);
+      const result = await client
+        .db("VisIT")
+        .collection("visiteur")
+        .insertOne(value);
+      res
+        .status(200)
+        .json({ message: "Données pour visiteur enregistrées avec succès" });
     }
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.post("/api/stand/add", async (req, res, next) => {
-    try {
-        const data = req.body;
+  try {
+    const data = req.body;
 
-        if (data._id) {
-            delete data._id;
-        }
-
-        const result = await client.db("VisIT").collection("stand").insertOne(data);
-        res.status(200).json({ message: "Données pour stand enregistrées avec succès" });
-    } catch (error) {
-        next(error);
+    if (data._id) {
+      delete data._id;
     }
+
+    const result = await client.db("VisIT").collection("stand").insertOne(data);
+    res
+      .status(200)
+      .json({ message: "Données pour stand enregistrées avec succès" });
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.put("/api/visiteur/update/:id", async (req, res, next) => {
@@ -216,9 +236,12 @@ app.put("/api/visiteur/update/:id", async (req, res, next) => {
 app.delete("/api/visiteur/delete/:id", async (req, res, next) => {
   const documentId = req.params.id;
 
-    try {
-        // Suppression du document
-        const result = await client.db("VisIT").collection("visiteur").deleteOne({_id: new ObjectId(documentId)});
+  try {
+    // Suppression du document
+    const result = await client
+      .db("VisIT")
+      .collection("visiteur")
+      .deleteOne({ _id: new ObjectId(documentId) });
 
     // Vérifie si la suppression a été effectuée avec succès
     if (result.deletedCount === 1) {
