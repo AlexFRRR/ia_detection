@@ -111,7 +111,7 @@ app.get("/api/visiteur", async (req, res, next) => {
   }
 });
 
-app.get("/api/stand", async (req, res, next) => {
+/* app.get("/api/stand", async (req, res, next) => {
   try {
     // Effectuez une requête à la base de données pour récupérer les stands
     const stands = await client
@@ -125,7 +125,7 @@ app.get("/api/stand", async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-});
+}); */
 
 app.post("/api/exposant/add", async (req, res, next) => {
   try {
@@ -185,7 +185,7 @@ app.post("/api/visiteur/add", async (req, res, next) => {
   }
 });
 
-app.post("/api/stand/add", async (req, res, next) => {
+/* app.post("/api/stand/add", async (req, res, next) => {
   try {
     const data = req.body;
 
@@ -200,7 +200,7 @@ app.post("/api/stand/add", async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-});
+}); */
 
 app.put("/api/visiteur/update/:id", async (req, res, next) => {
   const documentId = req.params.id;

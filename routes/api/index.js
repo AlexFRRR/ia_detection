@@ -2,7 +2,7 @@ const stand = require("./stand/");
 
 const routeCombiner = [
   {
-    route: "/api/stand/add",
+    route: "/api/stand",
     router: stand,
   },
 ];
